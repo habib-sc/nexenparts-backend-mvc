@@ -5,6 +5,7 @@ require('dotenv').config();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
+const dbConnect = require('./utils/dbConnect');
 const stripe = require('stripe')(process.env.STRIPE_SECRET);
 
 const app = express();
@@ -22,60 +23,58 @@ app.get('/', (req, res) => {
 // Token verify middlewear 
 const verifyToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
-  
-    if(!authHeader){
-      return res.status(401).send({message: 'Unauthorized Access!'});
+
+    if (!authHeader) {
+        return res.status(401).send({ message: 'Unauthorized Access!' });
     }
-  
+
     const token = authHeader?.split(' ')[1];
     jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
-      if(err){
-        return res.status(403).send({message: 'Forbidden Access!'});
-      }
-      req.decoded = decoded;
-      next();
+        if (err) {
+            return res.status(403).send({ message: 'Forbidden Access!' });
+        }
+        req.decoded = decoded;
+        next();
     });
 };
 
 
-// DB Info 
-const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@nexencarparts.gzk5v.mongodb.net/?retryWrites=true&w=majority`;
-const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+dbConnect();
 
-async function run () {
+async function run() {
     try {
-         // Connecting db 
-         await client.connect();
-         const partsCollection = client.db('NexenCarParts').collection('Parts');
-         const reviewsCollection = client.db('NexenCarParts').collection('Reviews');
-         const ordersCollection = client.db('NexenCarParts').collection('Orders');
-         const usersCollection = client.db('NexenCarParts').collection('Users');
-         const paymentsCollection = client.db('NexenCarParts').collection('Payments');
-         const mySkillsCollection = client.db('NexenCarParts').collection('MySkills');
-         const myToolsCollection = client.db('NexenCarParts').collection('MyTools');
-         const myProjectsCollection = client.db('NexenCarParts').collection('MyProjects');
+        // Connecting db 
+        await client.connect();
+        const partsCollection = client.db('NexenCarParts').collection('Parts');
+        const reviewsCollection = client.db('NexenCarParts').collection('Reviews');
+        const ordersCollection = client.db('NexenCarParts').collection('Orders');
+        const usersCollection = client.db('NexenCarParts').collection('Users');
+        const paymentsCollection = client.db('NexenCarParts').collection('Payments');
+        const mySkillsCollection = client.db('NexenCarParts').collection('MySkills');
+        const myToolsCollection = client.db('NexenCarParts').collection('MyTools');
+        const myProjectsCollection = client.db('NexenCarParts').collection('MyProjects');
 
 
-         // Verify Admin 
-        const verifyAdmin =  async(req, res, next) => {
+        // Verify Admin 
+        const verifyAdmin = async (req, res, next) => {
             const requester = req.decoded.email;
-            const requesterAccount = await usersCollection.findOne({email: requester});
-  
+            const requesterAccount = await usersCollection.findOne({ email: requester });
+
             if (requesterAccount.role == 'admin') {
-              next();
+                next();
             }
-            else{
-              return res.status(403).send({message: 'Forbidden Access!'});
+            else {
+                return res.status(403).send({ message: 'Forbidden Access!' });
             }
         };
 
 
         // check admin or not 
         app.get('/admin/:email', async (req, res) => {
-        const email = req.params.email;
-        const user = await usersCollection.findOne({email: email});
-        const isAdmin = user.role === 'admin';
-        res.send({admin: isAdmin});
+            const email = req.params.email;
+            const user = await usersCollection.findOne({ email: email });
+            const isAdmin = user.role === 'admin';
+            res.send({ admin: isAdmin });
         });
 
         // Parts get
@@ -87,27 +86,27 @@ async function run () {
         // Parts get by id
         app.get('/parts/:id', async (req, res) => {
             const id = req.params.id;
-            const filter = {_id: ObjectId(id)};
+            const filter = { _id: ObjectId(id) };
             const result = await partsCollection.findOne(filter);
             res.send(result);
         });
 
 
         // Parts or Item Delete by id
-        app.delete('/parts/delete/:id', verifyToken, verifyAdmin, async(req, res) => {
+        app.delete('/parts/delete/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
-            const query = {_id: ObjectId(id)};
+            const query = { _id: ObjectId(id) };
             const result = await partsCollection.deleteOne(query);
             res.send(result);
-        } );
+        });
 
 
         // Parts or Product Add 
-        app.post('/add-product', verifyToken, verifyAdmin, async(req, res) => {
+        app.post('/add-product', verifyToken, verifyAdmin, async (req, res) => {
             const product = req.body;
             const result = await partsCollection.insertOne(product);
             res.send(result);
-        } );
+        });
 
 
 
@@ -119,11 +118,11 @@ async function run () {
 
 
         // Reviews Add 
-        app.post('/add-review', verifyToken, async(req, res) => {
+        app.post('/add-review', verifyToken, async (req, res) => {
             const review = req.body;
             const result = await reviewsCollection.insertOne(review);
             res.send(result);
-        } );
+        });
 
 
         // Order post 
@@ -137,12 +136,12 @@ async function run () {
         app.patch('/order/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const payment = req.body;
-            const filter = {_id: ObjectId(id)};
+            const filter = { _id: ObjectId(id) };
             const updateDocument = {
-              $set: {
-                paid: true,
-                transactionId: payment.transactionId
-              }
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId
+                }
             };
             const result = await paymentsCollection.insertOne(payment);
             const updatedOrder = await ordersCollection.updateOne(filter, updateDocument);
@@ -154,9 +153,9 @@ async function run () {
         app.patch('/order/approve/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const approveData = req.body;
-            const filter = {_id: ObjectId(id)};
+            const filter = { _id: ObjectId(id) };
             const updateDocument = {
-              $set: {...approveData}
+                $set: { ...approveData }
             };
             const updatedOrder = await ordersCollection.updateOne(filter, updateDocument);
             res.send(approveData);
@@ -164,18 +163,18 @@ async function run () {
 
 
         // Order Delete 
-        app.delete('/order/delete/:id', verifyToken, async(req, res) => {
+        app.delete('/order/delete/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
-            const query = {_id: ObjectId(id)};
+            const query = { _id: ObjectId(id) };
             const order = await ordersCollection.findOne(query);
 
             // If the not paid then delete 
-            if(!order.paid) {
+            if (!order.paid) {
                 const result = await ordersCollection.deleteOne(query);
                 res.send(result);
             }
- 
-        } );
+
+        });
 
 
         // all user get 
@@ -185,29 +184,29 @@ async function run () {
         });
 
         // make user admin 
-        app.put('/user/admin/:email', verifyToken, verifyAdmin, async(req, res) => {
+        app.put('/user/admin/:email', verifyToken, verifyAdmin, async (req, res) => {
             const email = req.params.email;
-            const filter = {email: email};
+            const filter = { email: email };
             const updateDocument = {
-                $set: {role: 'admin'},
+                $set: { role: 'admin' },
             };
             const result = await usersCollection.updateOne(filter, updateDocument);
-            res.send(result);        
+            res.send(result);
         });
 
 
         // Get Orders by user
         app.get('/orders', verifyToken, async (req, res) => {
-            const email = req.query.email;  
+            const email = req.query.email;
             const decodedEmail = req.decoded.email;
-            
-            if(email == decodedEmail) {
-                const query = {email: email};
+
+            if (email == decodedEmail) {
+                const query = { email: email };
                 const orders = await ordersCollection.find(query).toArray();
                 res.send(orders);
             }
-            else{
-                return res.status(403).send({message: 'Forbidden Access'});
+            else {
+                return res.status(403).send({ message: 'Forbidden Access' });
             }
         });
 
@@ -221,30 +220,30 @@ async function run () {
         // Get Order by id 
         app.get('/order/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
-            const query = {_id: ObjectId(id)};
+            const query = { _id: ObjectId(id) };
             const result = await ordersCollection.findOne(query);
             res.send(result);
         });
 
         // Upsert users and issue token 
-        app.put('/user/:email', async(req, res) => {
+        app.put('/user/:email', async (req, res) => {
             const email = req.params.email;
             const user = req.body;
-            const filter = {email: email};
-            const options = { upsert: true};
+            const filter = { email: email };
+            const options = { upsert: true };
             const updateDocument = {
-                $set: {...user},
+                $set: { ...user },
             };
             const result = await usersCollection.updateOne(filter, updateDocument, options);
-            const token = jwt.sign({email: email}, process.env.TOKEN_SECRET, {expiresIn: '1d' });
-            res.send({result, token});
+            const token = jwt.sign({ email: email }, process.env.TOKEN_SECRET, { expiresIn: '1d' });
+            res.send({ result, token });
         });
 
 
         // get user info
-        app.get('/user-info/:email', verifyToken, async(req, res) => {
+        app.get('/user-info/:email', verifyToken, async (req, res) => {
             const email = req.params.email;
-            const filter = {email: email};
+            const filter = { email: email };
             const userInfo = await usersCollection.findOne(filter);
             res.send(userInfo);
         });
@@ -254,9 +253,9 @@ async function run () {
         app.patch('/parts/update/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const quantity = req.body;
-            const filter = {_id: ObjectId(id)};
+            const filter = { _id: ObjectId(id) };
             const updateDocument = {
-              $set: quantity
+                $set: quantity
             };
             const updatedItem = await partsCollection.updateOne(filter, updateDocument);
             res.send(updatedItem);
@@ -267,20 +266,20 @@ async function run () {
         app.post('/create-payment-intent', verifyToken, async (req, res) => {
             const order = req.body;
             const price = order.totalPrice;
-            const amount = price*100;
+            const amount = price * 100;
 
-            if(amount){
+            if (amount) {
                 const paymentIntent = await stripe.paymentIntents.create({
                     amount: amount,
                     currency: 'usd',
                     payment_method_types: ['card']
                 });
-                res.send({clientSecret: paymentIntent.client_secret})
+                res.send({ clientSecret: paymentIntent.client_secret })
             }
-            else{
-                res.send({success: false});
+            else {
+                res.send({ success: false });
             }
-            
+
         });
 
 
@@ -302,9 +301,9 @@ async function run () {
             res.send(projects);
         });
 
-        
+
     }
-    finally{
+    finally {
 
     }
 }
