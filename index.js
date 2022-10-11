@@ -8,12 +8,14 @@ const jwt = require('jsonwebtoken');
 const dbConnect = require('./utils/dbConnect');
 const stripe = require('stripe')(process.env.STRIPE_SECRET);
 const partsRoutes = require('./routes/v1/parts.route');
+const viewCount = require('./middleware/viewCount');
 
 const app = express();
 
 // Middlewear 
 app.use(cors());
 app.use(express.json());
+app.use(viewCount);
 
 
 // Token verify middlewear 
