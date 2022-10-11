@@ -15,7 +15,7 @@ const app = express();
 // Middlewear 
 app.use(cors());
 app.use(express.json());
-app.use(viewCount);
+// app.use(viewCount);
 
 
 // Token verify middlewear 

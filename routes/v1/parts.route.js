@@ -1,5 +1,6 @@
 const express = require('express');
 const partsController = require('../../controllers/parts.controllers');
+const viewCount = require('../../middleware/viewCount');
 
 const router = express.Router();
 
@@ -32,7 +33,7 @@ router.route("/")
    * @apiError (Unauthorized 401)  Unauthorized  Only authenticated users can access the data
    * @apiError (Forbidden 403)     Forbidden     Only admins can access the data
    */
-.get(partsController.getAllParts)
+.get(viewCount, partsController.getAllParts)
 /**
    * @api {post} /parts All parts
    * @apiDescription save any part parts
