@@ -1,4 +1,5 @@
 const express = require('express');
+const partsController = require('../../controllers/parts.controllers');
 
 const router = express.Router();
 
@@ -7,9 +8,7 @@ const router = express.Router();
 //     res.send("Parts Found");
 // });
 
-router.get("/:id", (req, res) => {
-    res.send("Parts Found with id");
-});
+router.get(partsController.getAParts);
 
 // router.post("/parts", (req, res) => {
 //     res.send("Parts Posted");
@@ -33,11 +32,7 @@ router.route("/")
    * @apiError (Unauthorized 401)  Unauthorized  Only authenticated users can access the data
    * @apiError (Forbidden 403)     Forbidden     Only admins can access the data
    */
-.get(
-    (req, res) => {
-        res.send("Parts Found");
-    }
-)
+.get(partsController.getAllParts)
 /**
    * @api {post} /parts All parts
    * @apiDescription save any part parts
